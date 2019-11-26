@@ -1,4 +1,4 @@
-#Get species level traits for fire species, as well as environmental covariates.
+#Merge fire responses, Nfix, mycorrhizal and elemental traits.
 rm(list=ls())
 source('paths.r')
 library(Taxonstand)
@@ -78,10 +78,27 @@ d <- rbind(d, sub)
 #Assign N-fixation status.----
 nodDB <- data.table(nodDB)
 yes.nfix  <- c('Rhizobia','likely_Rhizobia','Frankia','Nostocaceae','likely_present','Present')
-#yes.nfix2 <- c('Rhizobia','Frankia','Nostocaceae','Present')
 nodDB[Consensus.estimate %in% yes.nfix , nfix  := 1]
 nodDB <- nodDB[nfix == 1,.(genus,nfix)]
 d$nfix <- ifelse(d$genus %in% nodDB$genus, 1, 0)
+
+#Assign angiosperm - gymnosperm status.----
+#There are 11 gymnosperm families on wikipedia... https://en.wikipedia.org/wiki/Gymnosperm
+#Using this as our phylogeny was trimmed to other species. Needs to be regenerated.
+gymno.fam <- c('Cycadaceae',
+               'Zamiaceae',
+               'Ginkgoaceae',
+               'Welwitschiaceae',
+               'Gnetaceae',
+               'Pinaceae',
+               'Araucariaceae',
+               'Podocarpaceae',
+               'Sciadopityaceae',
+               'Cupressaceae',
+               'Taxaceae')
+#Assign pgf as angio/gymno.
+d$pgf <- NULL
+d$pgf <- ifelse(d$Family %in% gymno.fam,'gymno','angio')
 
 #Get species level trait means.----
 traits.spp <- data.table(traits)
@@ -99,9 +116,6 @@ fire <- fire[!(duplicated(fire$Species)),]
 d <- merge(d, fire, all.x = T)
 d <- d[d$MYCO_ASSO %in% c('AM','ECM'),]
 d$em <- ifelse(d$MYCO_ASSO == 'AM',0,1)
-#mod <- lm(sqrt(mburnsppba) ~ sqrt(mnoburnsppba) , data = d)
-#mod <- lm(sqrt(mburnsppba) ~ sqrt(mnoburnsppba)*Ngreen + em + nfix, data = d)
-#summary(mod)
 
 #Save output.----
 saveRDS(d, output.path)
